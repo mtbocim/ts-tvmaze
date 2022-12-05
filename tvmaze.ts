@@ -4,7 +4,29 @@ import * as $ from 'jquery';
 const $showsList = $("#showsList");
 const $episodesArea = $("#episodesArea");
 const $searchForm = $("#searchForm");
-const BASE_URL = 'https://api.tvmaze.com';
+const TVMAZE_URL = 'https://api.tvmaze.com';
+const MISSING_IMAGE_URL = "https://tinyurl.com/tv-missing";
+
+interface ShowsFromApiInterface {
+  id: number;
+  name: string;
+  summary: string;
+  image: { medium: string } | null
+}
+
+interface ShowsInterface {
+  id: number;
+  name: string;
+  summary: string;
+  image: string
+}
+
+interface EpisodesInterface {
+  id: number;
+  name: string;
+  season: number;
+  number: number;
+}
 
 /** Given a search term, search for tv shows that match that query.
  *
@@ -13,57 +35,41 @@ const BASE_URL = 'https://api.tvmaze.com';
  *    (if no image URL given by API, put in a default image URL)
  */
 
-async function getShowsByTerm(term: string): Promise<[]> {
+async function getShowsByTerm(term: string): Promise<ShowsInterface[]> {
   // ADD: Remove placeholder & make request to TVMaze search shows API.
-  
-  const res = await axios.get(`${BASE_URL}/search/shows`, {params: {q:term}} )
-  console.log(res.data);
-  return res.data;
-  // return [
-  //   {
-  //     id: 1767,
-  //     name: "The Bletchley Circle",
-  //     summary:
-  //       `<p><b>The Bletchley Circle</b> follows the journey of four ordinary
-  //          women with extraordinary skills that helped to end World War II.</p>
-  //        <p>Set in 1952, Susan, Millie, Lucy and Jean have returned to their
-  //          normal lives, modestly setting aside the part they played in
-  //          producing crucial intelligence, which helped the Allies to victory
-  //          and shortened the war. When Susan discovers a hidden code behind an
-  //          unsolved murder she is met by skepticism from the police. She
-  //          quickly realises she can only begin to crack the murders and bring
-  //          the culprit to justice with her former friends.</p>`,
-  //     image:
-  //         "http://static.tvmaze.com/uploads/images/medium_portrait/147/369403.jpg"
-  //   }
-  // ]
+
+  const res = await axios.get(`${TVMAZE_URL}/search/shows`, { params: { q: term } })
+
+  return res.data.map((result: { show: ShowsFromApiInterface }): ShowsInterface => {
+    const show = result.show;
+    return {
+      id: show.id,
+      name: show.name,
+      summary: show.summary,
+      image: show.image?.medium || MISSING_IMAGE_URL
+    }
+  });
 }
 
 
-interface ShowInterface {
-  id:number;
-  name:string;
-  summary:string;
-  image:URL;
-}
 
 /** Given list of shows, create markup for each and to DOM */
 
-function populateShows(shows: Object[]) {
+function populateShows(shows: ShowsInterface[]) {
   $showsList.empty();
-  
-  for (let data of shows) {
-    
+
+  for (let show of shows) {
+
     const $show = $(
-        `<div data-show-id="${data.show.id}" class="Show col-md-12 col-lg-6 mb-4">
+      `<div data-show-id="${show.id}" class="Show col-md-12 col-lg-6 mb-4">
          <div class="media">
            <img
-              src="http://static.tvmaze.com/uploads/images/medium_portrait/160/401704.jpg"
+              src=${show.image}
               alt="Bletchly Circle San Francisco"
               class="w-25 me-3">
            <div class="media-body">
-             <h5 class="text-primary">${data.show.name}</h5>
-             <div><small>${data.show.summary}</small></div>
+             <h5 class="text-primary">${show.name}</h5>
+             <div><small>${show.summary}</small></div>
              <button class="btn btn-outline-light btn-sm Show-getEpisodes">
                Episodes
              </button>
@@ -72,7 +78,8 @@ function populateShows(shows: Object[]) {
        </div>
       `);
 
-    $showsList.append($show);  }
+    $showsList.append($show);
+  }
 }
 
 
@@ -94,12 +101,52 @@ $searchForm.on("submit", async function (evt) {
 });
 
 
-/** Given a show ID, get from API and return (promise) array of episodes:
+/** 
+ * Given a show ID, get from API and return (promise) array of episodes:
  *      { id, name, season, number }
  */
+async function getEpisodesOfShow(showId: number) {
+  let response = await axios.get(`${TVMAZE_URL}/shows/${showId}/episodes`);
+  return processSeasonData(response);
+}
 
-// async function getEpisodesOfShow(id) { }
+/** 
+ * Accepts array and returns and object with the id, name, season, 
+ * and number of each episode
+ * 
+ */
+function processSeasonData(response) {
+  return response.data.map(function (data) {
+    return { id: data.id, name: data.name, season: data.season, number: data.number };
+  });
+}
 
-/** Write a clear docstring for this function... */
+/** Given an array of episodes, populates episode list part of DOM */
+function populateEpisodes(episodes) {
+  $("#episodesList").empty();
+  for (let ep of episodes) {
+    let description = `<li>${ep.name} (${ep.season}, ${ep.number})</li>`
+    $("#episodesList").append(description);
+  }
 
-// function populateEpisodes(episodes) { }
+}
+
+//Event handler for Episodes button click
+$("#showsList").on("click", ".btn", handleButtonClick);
+
+/**Calls populateEpisodes with the return value of getEpisodesOfShow,
+ * and then displays the list of episodes
+ */
+async function handleButtonClick(evt) {
+  evt.preventDefault();
+  let $button = $(evt.currentTarget);
+  //debugger;
+  let showId = $($button).closest(".Show").data("show-id");
+  populateEpisodes(await getEpisodesOfShow(showId));
+
+  displayEpisodesOfShow();
+}
+/**Displays episodeArea */
+function displayEpisodesOfShow() {
+  $("#episodesArea").removeAttr("style");
+}
