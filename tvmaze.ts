@@ -67,7 +67,7 @@ function populateShows(shows: ShowsInterface[]) {
          <div class="media">
            <img
               src=${show.image}
-              alt="Bletchly Circle San Francisco"
+              alt=${show.name}
               class="w-25 me-3">
            <div class="media-body">
              <h5 class="text-primary">${show.name}</h5>
@@ -90,8 +90,8 @@ function populateShows(shows: ShowsInterface[]) {
  */
 
 async function searchForShowAndDisplay() {
-  const term: string = $("#searchForm-term").val() as string;
-  const shows = await getShowsByTerm(term)!;
+  const term = $("#searchForm-term").val() as string;
+  const shows = await getShowsByTerm(term);
 
   $episodesArea.hide();
   populateShows(shows);
@@ -111,6 +111,7 @@ $searchForm.on("submit", async function (evt) {
  */
 async function getEpisodesOfShow(showId: number): Promise<EpisodesInterface[]> {
   let res = await axios.get(`${TVMAZE_URL}/shows/${showId}/episodes`);
+  
   return res.data.map((result: EpisodesInterface) => {
     return {
       id: result.id,
