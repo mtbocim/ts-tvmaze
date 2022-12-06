@@ -12808,7 +12808,7 @@ function getShowsByTerm(term) {
         });
     });
 }
-/** Given list of shows, create markup for each and to DOM */
+/** Given list of shows, create markup for each and add to DOM */
 function populateShows(shows) {
     $showsList.empty();
     for (var _i = 0, shows_1 = shows; _i < shows_1.length; _i++) {
@@ -12837,6 +12837,7 @@ function searchForShowAndDisplay() {
         });
     });
 }
+//Event listener for search form submission
 $searchForm.on("submit", function (evt) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
@@ -12852,33 +12853,33 @@ $searchForm.on("submit", function (evt) {
     });
 });
 /**
- * Given a show ID, get from API and return (promise) array of episodes:
+ * Given a show ID, get a list of episodes from API call
+ * and return (promise) array of episodes:
  *      { id, name, season, number }
  */
 function getEpisodesOfShow(showId) {
     return __awaiter(this, void 0, void 0, function () {
-        var response;
+        var res;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, axios_1.default.get("".concat(TVMAZE_URL, "/shows/").concat(showId, "/episodes"))];
                 case 1:
-                    response = _a.sent();
-                    return [2 /*return*/, processSeasonData(response)];
+                    res = _a.sent();
+                    return [2 /*return*/, res.data.map(function (result) {
+                            return {
+                                id: result.id,
+                                name: result.name,
+                                season: result.season,
+                                number: result.number
+                            };
+                        })];
             }
         });
     });
 }
 /**
- * Accepts array and returns and object with the id, name, season,
- * and number of each episode
- *
+ * Given an array of episodes, populates episode list part of DOM
  */
-function processSeasonData(response) {
-    return response.data.map(function (data) {
-        return { id: data.id, name: data.name, season: data.season, number: data.number };
-    });
-}
-/** Given an array of episodes, populates episode list part of DOM */
 function populateEpisodes(episodes) {
     $("#episodesList").empty();
     for (var _i = 0, episodes_1 = episodes; _i < episodes_1.length; _i++) {
@@ -12889,8 +12890,9 @@ function populateEpisodes(episodes) {
 }
 //Event handler for Episodes button click
 $("#showsList").on("click", ".btn", handleButtonClick);
-/**Calls populateEpisodes with the return value of getEpisodesOfShow,
- * and then displays the list of episodes
+/**
+ * Calls populateEpisodes with the return value of getEpisodesOfShow,
+ * and then calls displayEpisodesOfShow.
  */
 function handleButtonClick(evt) {
     return __awaiter(this, void 0, void 0, function () {

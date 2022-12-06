@@ -36,24 +36,26 @@ interface EpisodesInterface {
  */
 
 async function getShowsByTerm(term: string): Promise<ShowsInterface[]> {
-  // ADD: Remove placeholder & make request to TVMaze search shows API.
+  const res = await axios.get(
+    `${TVMAZE_URL}/search/shows`,
+    { params: { q: term } }
+  );
 
-  const res = await axios.get(`${TVMAZE_URL}/search/shows`, { params: { q: term } })
-
-  return res.data.map((result: { show: ShowsFromApiInterface }): ShowsInterface => {
-    const show = result.show;
-    return {
-      id: show.id,
-      name: show.name,
-      summary: show.summary,
-      image: show.image?.medium || MISSING_IMAGE_URL
-    }
-  });
+  return res.data.map(
+    (result: { show: ShowsFromApiInterface }): ShowsInterface => {
+      const show = result.show;
+      return {
+        id: show.id,
+        name: show.name,
+        summary: show.summary,
+        image: show.image?.medium || MISSING_IMAGE_URL
+      }
+    });
 }
 
 
 
-/** Given list of shows, create markup for each and to DOM */
+/** Given list of shows, create markup for each and add to DOM */
 
 function populateShows(shows: ShowsInterface[]) {
   $showsList.empty();
@@ -95,6 +97,7 @@ async function searchForShowAndDisplay() {
   populateShows(shows);
 }
 
+//Event listener for search form submission
 $searchForm.on("submit", async function (evt) {
   evt.preventDefault();
   await searchForShowAndDisplay();
@@ -102,42 +105,41 @@ $searchForm.on("submit", async function (evt) {
 
 
 /** 
- * Given a show ID, get from API and return (promise) array of episodes:
+ * Given a show ID, get a list of episodes from API call
+ * and return (promise) array of episodes:
  *      { id, name, season, number }
  */
-async function getEpisodesOfShow(showId: number) {
-  let response = await axios.get(`${TVMAZE_URL}/shows/${showId}/episodes`);
-  return processSeasonData(response);
-}
-
-/** 
- * Accepts array and returns and object with the id, name, season, 
- * and number of each episode
- * 
- */
-function processSeasonData(response) {
-  return response.data.map(function (data) {
-    return { id: data.id, name: data.name, season: data.season, number: data.number };
+async function getEpisodesOfShow(showId: number): Promise<EpisodesInterface[]> {
+  let res = await axios.get(`${TVMAZE_URL}/shows/${showId}/episodes`);
+  return res.data.map((result: EpisodesInterface) => {
+    return {
+      id: result.id,
+      name: result.name,
+      season: result.season,
+      number: result.number
+    }
   });
 }
 
-/** Given an array of episodes, populates episode list part of DOM */
-function populateEpisodes(episodes) {
+/** 
+ * Given an array of episodes, populates episode list part of DOM 
+ */
+function populateEpisodes(episodes: EpisodesInterface[]) {
   $("#episodesList").empty();
   for (let ep of episodes) {
     let description = `<li>${ep.name} (${ep.season}, ${ep.number})</li>`
     $("#episodesList").append(description);
   }
-
 }
 
 //Event handler for Episodes button click
 $("#showsList").on("click", ".btn", handleButtonClick);
 
-/**Calls populateEpisodes with the return value of getEpisodesOfShow,
- * and then displays the list of episodes
+/**
+ * Calls populateEpisodes with the return value of getEpisodesOfShow,
+ * and then calls displayEpisodesOfShow.
  */
-async function handleButtonClick(evt) {
+async function handleButtonClick(evt: JQuery.ClickEvent) {
   evt.preventDefault();
   let $button = $(evt.currentTarget);
   //debugger;
@@ -146,7 +148,8 @@ async function handleButtonClick(evt) {
 
   displayEpisodesOfShow();
 }
+
 /**Displays episodeArea */
-function displayEpisodesOfShow() {
+function displayEpisodesOfShow(): void {
   $("#episodesArea").removeAttr("style");
 }
